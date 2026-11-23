@@ -47,14 +47,16 @@ public struct JankConfig: Codable, Equatable, Sendable {
     public var probeLatenessNoBaselineMs: Double = 12
     public var probeLatenessBaselineMultiplier: Double = 4
     public var probeLatenessSevereMs: Double = 50
+    /// Severe threshold is at least baseline × this (machines with a noisy baseline need a higher bar).
+    public var probeLatenessSevereBaselineMultiplier: Double = 6
     public var probeWorkInflationModerate: Double = 1.8
     public var probeWorkInflationSevere: Double = 3.0
     /// If fewer than this fraction of expected wake-ups happened, the probe thread was starved.
     public var probeMinSampleFraction: Double = 0.5
     public var baselineMinSamples: Int = 60
     public var baselineMaxSamples: Int = 600
-    /// Baseline never learns values above these caps (protects against a permanently busy machine).
-    public var baselineLatenessCapMs: Double = 10
+    /// Baseline never learns values above this cap (protects against learning a lag episode as normal).
+    public var baselineLatenessCapMs: Double = 40
 
     // Input latency
     public var inputEnabled: Bool = true

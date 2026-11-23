@@ -62,9 +62,23 @@ jobs:
         shell: bash
         timeout-minutes: 3
         run: |
-          dist/arm64/jankprobe engine --seconds 25 --data /tmp/jw-engine --verbose
+          dist/arm64/jankprobe engine --seconds 20 --data /tmp/jw-engine
           ls -la /tmp/jw-engine /tmp/jw-engine/ticks
-          head -c 1500 /tmp/jw-engine/ticks/*.jsonl
+      - name: End-to-end engine under CPU stress (gate forced active)
+        shell: bash
+        timeout-minutes: 4
+        run: |
+          # No human is typing on a CI runner, so pretend the user is always active.
+          mkdir -p /tmp/jw-e2e
+          echo '{"idleAfterSec": 1e9, "userActiveWindowSec": 1e9, "frontProbeEnabled": false}' > /tmp/jw-e2e/config.json
+          dist/arm64/jankprobe engine --seconds 90 --data /tmp/jw-e2e &
+          ENGINE=$!
+          sleep 40
+          scripts/stress/cpu.sh 8 35
+          wait $ENGINE
+          echo "--- episodes:"; ls /tmp/jw-e2e/episodes
+          for f in /tmp/jw-e2e/episodes/*.json; do [ -f "$f" ] && python3 -c "import json,sys; r=json.load(open(sys.argv[1])); d=r.get('diagnosis') or {}; print(r['episode']['id'][:8], d.get('cause'), d.get('headline'), [c['displayName'] for c in d.get('culprits',[])])" "$f"; done
+          echo "--- baseline:"; cat /tmp/jw-e2e/baseline.json | head -c 600; echo
       - name: Annotate errors
         if: failure()
         shell: bash

@@ -229,7 +229,7 @@ public final class Engine {
 
         let sig = evaluator.evaluate(tick, baseline: baseline)
         tick.signals = sig
-        if state == .active, tick.userActive, sig.total == 0, let p = tick.probe {
+        if SignalEvaluator.isBaselineCandidate(tick, sig, phase: detector.phase), let p = tick.probe {
             baseline.observeCalm(p, config: config)
         }
         ring.append(tick)

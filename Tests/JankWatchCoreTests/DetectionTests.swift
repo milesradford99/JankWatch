@@ -64,9 +64,29 @@ final class SignalTests: XCTestCase {
         XCTAssertEqual(eval.latenessThresholdMs(baseline: calmBaseline()), 8)
     }
 
+    func testNoisyMachineLearnsHigherThresholds() {
+        var b = ProbeBaseline()
+        for _ in 0..<100 { b.observeCalm(Fx.probe(p95: 20), config: JankConfig()) }
+        XCTAssertEqual(eval.latenessThresholdMs(baseline: b), 80)
+        XCTAssertEqual(eval.latenessSevereMs(baseline: b), 120)
+        XCTAssertEqual(eval.evaluate(Fx.tick(1, probe: Fx.probe(p95: 25)), baseline: b).probeScore, 0)
+        XCTAssertEqual(eval.evaluate(Fx.tick(1, probe: Fx.probe(p95: 90)), baseline: b).probeScore, 0.5)
+        XCTAssertEqual(eval.evaluate(Fx.tick(1, probe: Fx.probe(p95: 130)), baseline: b).probeScore, 1)
+    }
+
+    func testBaselineCandidateIgnoresProbeScore() {
+        let t = Fx.tick(1, probe: Fx.probe(p95: 30))
+        let probeOnly = TickSignals(probeScore: 0.5, inputScore: 0, frontScore: 0, total: 0.5, isLagTick: false, reasons: [])
+        XCTAssertTrue(SignalEvaluator.isBaselineCandidate(t, probeOnly, phase: .suspect))
+        XCTAssertFalse(SignalEvaluator.isBaselineCandidate(t, probeOnly, phase: .lagging))
+        let withInput = TickSignals(probeScore: 0, inputScore: 0.5, frontScore: 0, total: 0.5, isLagTick: false, reasons: [])
+        XCTAssertFalse(SignalEvaluator.isBaselineCandidate(t, withInput, phase: .normal))
+        XCTAssertFalse(SignalEvaluator.isBaselineCandidate(Fx.tick(1, active: false), .zero, phase: .normal))
+    }
+
     func testBaselineIgnoresValuesAboveCap() {
         var b = ProbeBaseline()
-        b.observeCalm(Fx.probe(p95: 30), config: JankConfig())
+        b.observeCalm(Fx.probe(p95: 50), config: JankConfig())
         XCTAssertTrue(b.latenessP95.isEmpty)
         XCTAssertEqual(b.workP50.count, 1)
     }

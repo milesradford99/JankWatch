@@ -66,6 +66,20 @@ public struct SignalEvaluator {
         return config.probeLatenessNoBaselineMs
     }
 
+    public func latenessSevereMs(baseline: ProbeBaseline) -> Double {
+        if let b = baseline.latenessP95Ms(minSamples: config.baselineMinSamples) {
+            return max(config.probeLatenessSevereMs, b * config.probeLatenessSevereBaselineMultiplier)
+        }
+        return config.probeLatenessSevereMs
+    }
+
+    /// Whether this tick may be used to learn the probe baseline: the user is active and the *other* signals
+    /// (input, front app) look fine. The probe's own score is deliberately not used, so a machine whose calm state
+    /// is noisier than the defaults can still learn its baseline instead of alerting forever.
+    public static func isBaselineCandidate(_ tick: Tick, _ s: TickSignals, phase: DetectorPhase) -> Bool {
+        tick.gate == .active && tick.userActive && tick.probe != nil && s.inputScore == 0 && s.frontScore == 0 && phase != .lagging
+    }
+
     public func evaluate(_ tick: Tick, baseline: ProbeBaseline) -> TickSignals {
         var reasons: [String] = []
 
@@ -77,7 +91,7 @@ public struct SignalEvaluator {
                 reasons.append("probe.starved")
             } else {
                 let threshold = latenessThresholdMs(baseline: baseline)
-                if p.latenessP95Ms >= config.probeLatenessSevereMs {
+                if p.latenessP95Ms >= latenessSevereMs(baseline: baseline) {
                     probeScore = 1.0
                     reasons.append("probe.lateness.severe")
                 } else if p.latenessP95Ms >= threshold {
