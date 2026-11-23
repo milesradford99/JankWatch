@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core-linux:
+    name: Core tests (Linux)
+    runs-on: ubuntu-24.04
+    container: swift:6.0-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: swift build 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: Test
+        run: swift test 2>&1 | tee test.log; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: Annotate errors
+        if: failure()
+        shell: bash
+        run: |
+          cat build.log test.log 2>/dev/null | grep -E "error:|failed" | sort -u | head -40 | while IFS= read -r l; do echo "::error::$l"; done
+
+  macos:
+    name: macOS build + tests (arm64 & x86_64)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+      - name: Build (debug, host)
+        shell: bash
+        run: swift build 2>&1 | tee build.log; exit ${PIPESTATUS[0]}
+      - name: Unit tests
+        shell: bash
+        run: swift test 2>&1 | tee test.log; exit ${PIPESTATUS[0]}
+      - name: App bundle arm64
+        shell: bash
+        run: scripts/build-app.sh arm64 2>&1 | tee app-arm64.log; exit ${PIPESTATUS[0]}
+      - name: App bundle x86_64
+        shell: bash
+        run: scripts/build-app.sh x86_64 2>&1 | tee app-x86_64.log; exit ${PIPESTATUS[0]}
+      - name: Smoke-run jankprobe (no permissions needed)
+        shell: bash
+        run: |
+          dist/arm64/jankprobe env
+          dist/arm64/jankprobe rusage | tail -30
+          dist/arm64/jankprobe topology | tail -20
+          timeout 20 dist/arm64/jankprobe probe --seconds 8 || true
+          mkdir -p /tmp/jw && dist/arm64/jankprobe evaluate --data /tmp/jw
+      - name: Smoke-run engine headless
+        shell: bash
+        run: timeout 40 dist/arm64/jankprobe engine --seconds 25 --data /tmp/jw-engine --verbose || true
+      - name: Annotate errors
+        if: failure()
+        shell: bash
+        run: |
+          cat *.log 2>/dev/null | grep -E "error:" | sed -E 's#^.*/(Sources|Tests)/#\1/#' | sort -u | head -45 | while IFS= read -r l; do echo "::error::$l"; done
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: JankWatch-builds
+          path: |
+            dist/*/JankWatch-*.zip
+            dist/*/jankprobe
+          retention-days: 14
