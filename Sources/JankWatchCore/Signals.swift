@@ -76,8 +76,14 @@ public struct SignalEvaluator {
     /// Whether this tick may be used to learn the probe baseline: the user is active and the *other* signals
     /// (input, front app) look fine. The probe's own score is deliberately not used, so a machine whose calm state
     /// is noisier than the defaults can still learn its baseline instead of alerting forever.
+    ///
+    /// During a lag episode we normally stop learning, except when the user is producing input and that input is
+    /// delivered promptly: then the direct measurement contradicts the probe, and the probe's idea of "normal" is
+    /// what needs to move (otherwise a machine with a noisy probe would stay in the lagging state forever).
     public static func isBaselineCandidate(_ tick: Tick, _ s: TickSignals, phase: DetectorPhase) -> Bool {
-        tick.gate == .active && tick.userActive && tick.probe != nil && s.inputScore == 0 && s.frontScore == 0 && phase != .lagging
+        guard tick.gate == .active, tick.userActive, tick.probe != nil, s.inputScore == 0, s.frontScore == 0 else { return false }
+        if phase != .lagging { return true }
+        return tick.input.count >= 2
     }
 
     public func evaluate(_ tick: Tick, baseline: ProbeBaseline) -> TickSignals {

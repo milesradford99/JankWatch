@@ -58,6 +58,18 @@ public struct LagDetector {
         self.config = config
     }
 
+    /// End the current episode now (e.g. the app is quitting). Returns the finished episode, if any.
+    public mutating func forceEnd(t: Double, wall: Date) -> Episode? {
+        guard var ep = current else { return nil }
+        ep.endT = t
+        ep.endWall = wall
+        current = nil
+        phase = .normal
+        window.removeAll()
+        recentTicks.removeAll()
+        return ep
+    }
+
     public mutating func process(_ tick: Tick, _ s: TickSignals) -> [DetectorEvent] {
         var events: [DetectorEvent] = []
 

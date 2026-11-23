@@ -149,6 +149,10 @@ public final class Engine {
             probe.stop()
             input.setEnabled(false)
             store.saveBaseline(baseline)
+            // Persist the episode in progress and anything still waiting for its post-roll.
+            let t = MachClock.uptimeSeconds()
+            if let ep = detector.forceEnd(t: t, wall: Date()) { handle(.ended(ep), now: t) }
+            flushPendingRecords(now: .infinity)
         }
         let pauses = queue.sync { ledger.activePauses }
         for r in pauses {
@@ -372,7 +376,7 @@ public final class Engine {
     private func flushPendingRecords(now: Double) {
         let due = pendingRecords.filter { $0.due <= now || gateState == .off }
         guard !due.isEmpty else { return }
-        pendingRecords.removeAll { $0.due <= now || gateState == .off }
+        pendingRecords.removeAll { p in due.contains { $0.record.episode.id == p.record.episode.id } }
         for p in due {
             var r = p.record
             let from = p.startT - Double(config.episodePreSec)

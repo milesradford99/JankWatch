@@ -417,6 +417,7 @@ final class PrintDelegate: EngineDelegate {
     }
 
     func engineShowAlert(_ a: AlertModel) {
+        lastHeadline = a.diagnosis.headline
         print("\n>>> ALERT: \(a.diagnosis.cause.rawValue) — \(a.diagnosis.headline)")
         for e in a.diagnosis.evidence { print("    · \(e)") }
         for c in a.diagnosis.culprits {
@@ -425,7 +426,13 @@ final class PrintDelegate: EngineDelegate {
         print("")
     }
 
+    var lastHeadline = ""
+
     func engineUpdateAlert(_ a: AlertModel) {
+        if a.diagnosis.headline != lastHeadline {
+            lastHeadline = a.diagnosis.headline
+            print(">>> UPDATE: \(a.diagnosis.cause.rawValue) — \(a.diagnosis.headline)")
+        }
         if a.ended { print("<<< episode ended (\(a.episode.durationSec.map { String(format: "%.0f s", $0) } ?? "?"))") }
     }
 
@@ -441,6 +448,7 @@ func cmdEngine(_ args: Args) {
     let delegate = PrintDelegate(verbose: args.has("--verbose"))
     engine.delegate = delegate
     engine.start()
+    setvbuf(stdout, nil, _IOLBF, 0)  // line-buffered so CI logs interleave correctly
     signal(SIGINT) { _ in exit(0) }
     if seconds > 0 { spin(seconds) } else { while true { spin(3600) } }
     engine.stop()

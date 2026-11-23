@@ -56,7 +56,7 @@ public struct JankConfig: Codable, Equatable, Sendable {
     public var baselineMinSamples: Int = 60
     public var baselineMaxSamples: Int = 600
     /// Baseline never learns values above this cap (protects against learning a lag episode as normal).
-    public var baselineLatenessCapMs: Double = 40
+    public var baselineLatenessCapMs: Double = 200
 
     // Input latency
     public var inputEnabled: Bool = true
@@ -95,7 +95,7 @@ public struct JankConfig: Codable, Equatable, Sendable {
 
     // Sampling
     public var rusageTimeUnit: RusageTimeUnit = .auto
-    public var privilegedFallbackIntervalSec: Double = 3
+    public var privilegedFallbackIntervalSec: Double = 5
     public var intelThermPollSec: Double = 10
 
     // Recording

@@ -75,10 +75,12 @@ final class SignalTests: XCTestCase {
     }
 
     func testBaselineCandidateIgnoresProbeScore() {
-        let t = Fx.tick(1, probe: Fx.probe(p95: 30))
+        let t = Fx.tick(1, probe: Fx.probe(p95: 30), input: Fx.input(count: 0))
         let probeOnly = TickSignals(probeScore: 0.5, inputScore: 0, frontScore: 0, total: 0.5, isLagTick: false, reasons: [])
         XCTAssertTrue(SignalEvaluator.isBaselineCandidate(t, probeOnly, phase: .suspect))
-        XCTAssertFalse(SignalEvaluator.isBaselineCandidate(t, probeOnly, phase: .lagging))
+        XCTAssertFalse(SignalEvaluator.isBaselineCandidate(t, probeOnly, phase: .lagging), "no input to contradict the probe")
+        let typing = Fx.tick(1, probe: Fx.probe(p95: 30), input: Fx.input(max: 12, count: 4))
+        XCTAssertTrue(SignalEvaluator.isBaselineCandidate(typing, probeOnly, phase: .lagging), "prompt input contradicts the probe")
         let withInput = TickSignals(probeScore: 0, inputScore: 0.5, frontScore: 0, total: 0.5, isLagTick: false, reasons: [])
         XCTAssertFalse(SignalEvaluator.isBaselineCandidate(t, withInput, phase: .normal))
         XCTAssertFalse(SignalEvaluator.isBaselineCandidate(Fx.tick(1, active: false), .zero, phase: .normal))
@@ -86,7 +88,7 @@ final class SignalTests: XCTestCase {
 
     func testBaselineIgnoresValuesAboveCap() {
         var b = ProbeBaseline()
-        b.observeCalm(Fx.probe(p95: 50), config: JankConfig())
+        b.observeCalm(Fx.probe(p95: 250), config: JankConfig())
         XCTAssertTrue(b.latenessP95.isEmpty)
         XCTAssertEqual(b.workP50.count, 1)
     }
@@ -124,6 +126,15 @@ final class DetectorTests: XCTestCase {
         XCTAssertEqual(ended.count, 1)
         // window after tick 6: [T, F, F, F, F]? exit when ≤1 lag tick in last 5 → at tick 6 window = [t2..t6] = T,T,F,F,F → 2; tick 7 → T,F,F,F,F → 1 → end
         XCTAssertEqual(ended.first?.endT, 7)
+    }
+
+    func testForceEnd() {
+        var (d, _) = run([true, true, true])
+        XCTAssertEqual(d.phase, .lagging)
+        let ep = d.forceEnd(t: 10, wall: Date())
+        XCTAssertEqual(ep?.endT, 10)
+        XCTAssertEqual(d.phase, .normal)
+        XCTAssertNil(d.forceEnd(t: 11, wall: Date()))
     }
 
     func testGateOffEndsEpisode() {
