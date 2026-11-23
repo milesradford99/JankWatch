@@ -349,7 +349,7 @@ func cmdTopology() {
     guard topo.isHeterogeneous, let e = topo.effCount else {
         printJSON("RESULT topology", TopologyResult(topology: topo, backgroundBusyPerCore: [], interactiveBusyPerCore: [],
                                                     backgroundBusiestIndices: [], assumedEfficiencyIndices: [], effCoresFirstLooksRight: nil))
-        print("Not a heterogeneous CPU (Intel): nothing to check.")
+        print("Not a heterogeneous CPU (Intel, or a VM that hides core types): nothing to check.")
         return
     }
     print("Burning \(e) background-QoS threads for 4 s (macOS should keep them on efficiency cores) ...")

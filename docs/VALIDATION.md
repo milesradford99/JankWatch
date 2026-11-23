@@ -103,8 +103,10 @@ sudo jankprobe rusage      # 对照：以 root 运行
 - `ownUserOK == ownUserTotal`，即自己的进程全部能读。
 - `rootOK` 和 `rootTotal` 照实记录即可，这一步只是取证。
 - `psCoversDenied` 接近 `deniedEPERM`，说明 ps 兜底能覆盖读不了的进程。
-- `kernelTaskViaPS` 为 `true`。
+- `kernelTaskViaPS`：照实记录。CI 的 Apple Silicon 虚拟机上为 `false`，即普通用户用 `ps` 也拿不到 kernel_task 的 CPU。这不影响降频判断，因为降频看的是温控等级和 CPU_Speed_Limit。
 - `unit`：Intel 上为 `nanoseconds`；Apple Silicon 上为 `machTicks` 或 `nanoseconds`，照实记录。
+
+**已知结果（CI 上 macOS 15.8 的 Apple Silicon 虚拟机）：** 普通用户读 root 进程 0/139，读其他用户进程 0/70，自己的进程 221/221，`ps` 兜底覆盖 208/209，`unit` 为 `machTicks`。真机上请确认是否一致。
 
 **记录项：** 两次运行（普通用户、root）的 `RESULT rusage` JSON。
 

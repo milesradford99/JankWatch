@@ -50,15 +50,21 @@ jobs:
         run: scripts/build-app.sh x86_64 2>&1 | tee app-x86_64.log; exit ${PIPESTATUS[0]}
       - name: Smoke-run jankprobe (no permissions needed)
         shell: bash
+        timeout-minutes: 3
         run: |
           dist/arm64/jankprobe env
           dist/arm64/jankprobe rusage | tail -30
           dist/arm64/jankprobe topology | tail -20
-          timeout 20 dist/arm64/jankprobe probe --seconds 8 || true
+          dist/arm64/jankprobe probe --seconds 8
+          dist/x86_64/jankprobe env || echo 'x86_64 binary not runnable here (no Rosetta)'
           mkdir -p /tmp/jw && dist/arm64/jankprobe evaluate --data /tmp/jw
       - name: Smoke-run engine headless
         shell: bash
-        run: timeout 40 dist/arm64/jankprobe engine --seconds 25 --data /tmp/jw-engine --verbose || true
+        timeout-minutes: 3
+        run: |
+          dist/arm64/jankprobe engine --seconds 25 --data /tmp/jw-engine --verbose
+          ls -la /tmp/jw-engine /tmp/jw-engine/ticks
+          head -c 1500 /tmp/jw-engine/ticks/*.jsonl
       - name: Annotate errors
         if: failure()
         shell: bash
