@@ -154,6 +154,7 @@ struct MenuContentView: View {
             Menu("更多") {
                 Button("设置…") { model.settings.show() }
                 Button("测试弹窗") { model.engine.showTestAlert() }
+                Button("测试弹窗（5 秒后，用于验证不抢焦点）") { model.engine.showTestAlert(after: 5) }
                 Button("打开数据目录") { model.openDataDirectory() }
                 Divider()
                 Button("退出 JankWatch") { NSApp.terminate(nil) }

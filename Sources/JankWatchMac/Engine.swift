@@ -40,6 +40,8 @@ public struct EngineStatus: Equatable, Sendable {
     public var recentEpisodes: [EpisodeSummary] = []
     public var ledger: [ActionRecord] = []
     public var config = JankConfig()
+
+    public init() {}
 }
 
 public protocol EngineDelegate: AnyObject {
@@ -440,8 +442,8 @@ public final class Engine {
     }
 
     /// Show an alert built from the current data, for checking the panel UI (docs/VALIDATION.md V7).
-    public func showTestAlert() {
-        queue.async { [self] in
+    public func showTestAlert(after delay: Double = 0) {
+        queue.asyncAfter(deadline: .now() + delay) { [self] in
             var ep = Episode(id: "test-" + UUID().uuidString, startT: MachClock.uptimeSeconds(), startWall: Date())
             ep.maxInputLatencyMs = 123
             var d = attributor.diagnose(ring.elements, context: attributionContext)

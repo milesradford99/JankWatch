@@ -63,7 +63,7 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          cat *.log 2>/dev/null | grep -E "error:" | sed -E 's#^.*/(Sources|Tests)/#\1/#' | sort -u | head -45 | while IFS= read -r l; do echo "::error::$l"; done
+          cat *.log 2>/dev/null | grep -E "^/.*: error:|^error:" | sed -E 's#^.*/(Sources|Tests|Package)#\1#' | sort -u | head -45 | while IFS= read -r l; do echo "::error::$l"; done
       - uses: actions/upload-artifact@v4
         if: success()
         with:
