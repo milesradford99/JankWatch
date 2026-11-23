@@ -285,9 +285,9 @@ struct ProbeRow {
     var work: Double { st.workP50Ms ?? 0 }
 
     var line: String {
-        let a = String(format: "%3d %7d %8.2f %8.2f %8.2f", sec, st.samples, st.latenessP50Ms, st.latenessP95Ms, st.latenessMaxMs)
+        let a = String(format: "%3ld %7ld %8.2f %8.2f %8.2f", sec, st.samples, st.latenessP50Ms, st.latenessP95Ms, st.latenessMaxMs)
         let b = String(format: " %9.3f %5.2f %7.1f", work, ratio, inputMax)
-        let c = String(format: " %4.0f%% %4.0f%% %5d %6.1f %7d ", cpu, pcpu, pressure, swapMB, thermal)
+        let c = String(format: " %4.0f%% %4.0f%% %5ld %6.1f %7ld ", cpu, pcpu, pressure, swapMB, thermal)
         return a + b + c + limit
     }
 
@@ -357,7 +357,7 @@ func cmdTopology() {
     spin(1)
     print("Burning \(topo.logical) user-interactive threads for 3 s ...")
     let ui = burn(threads: topo.logical, qos: .userInteractive, seconds: 3)
-    let busiest = bg.enumerated().sorted { $0.element > $1.element }.prefix(e).map(\.offset).sorted()
+    let busiest = bg.enumerated().sorted { $0.element > $1.element }.prefix(e).map { $0.offset }.sorted()
     let assumed = Array(0..<e)
     printJSON("RESULT topology", TopologyResult(topology: topo, backgroundBusyPerCore: bg, interactiveBusyPerCore: ui,
                                                 backgroundBusiestIndices: busiest, assumedEfficiencyIndices: assumed,
@@ -408,7 +408,7 @@ final class PrintDelegate: EngineDelegate {
         tick += 1
         let sig = s.lastSignals
         if verbose || s.phase != lastPhase || s.gate != lastGate || sig.total > 0 {
-            print(String(format: "[%5d] gate=%@ phase=%@ score=%.2f (probe %.2f input %.2f front %.2f) %@ selfCPU=%.1f%%",
+            print(String(format: "[%5ld] gate=%@ phase=%@ score=%.2f (probe %.2f input %.2f front %.2f) %@ selfCPU=%.1f%%",
                          tick, s.gate.rawValue, s.phase.rawValue, sig.total, sig.probeScore, sig.inputScore, sig.frontScore,
                          sig.reasons.joined(separator: ","), s.selfCPUPercent))
         }

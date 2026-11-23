@@ -223,7 +223,7 @@ jankprobe topology
    - 用 `jankprobe act bg-on <pid>` 的对照输出，或用 `ps -o pid,stat,pri,comm -p <pid>` 查看，`pri` 应该下降。
    - 在菜单的"已处理"里点"撤销"，`pri` 应该恢复。
 2. **暂停：** 同上点"暂停"。`ps` 的 `stat` 应显示 `T`；约 1 分钟后自动恢复（`stat` 变回 `R`），并出现提示"自动恢复"。
-3. **切到前台自动恢复：** 用 `hang-app.sh` 之外的方法，通过 JankWatch 暂停一个 GUI App（比如用 CPU 压力让某个 App 成为元凶；或者在测试弹窗里，对后台 App 点"暂停"）。然后切到那个 App，它应该立即恢复运行。
+3. **切到前台自动恢复：** 让一个后台 GUI App 成为元凶，再用 JankWatch 暂停它。做法：在 Safari 里打开一个持续耗 CPU 的网页（比如浏览器跑分页面），切到 TextEdit 打字；等弹窗出现后，对 Safari 点"暂停"。也可以开着 Safari 用"测试弹窗"，如果元凶列表里有它，直接点"暂停"。然后切回 Safari，它应该立即恢复运行，并出现提示"你切换到了「…」，已自动恢复"。
 4. **管理员路径：** 运行 `sudo sh -c 'yes > /dev/null' &`（这会产生一个 root 进程），等弹窗。元凶"yes"的按钮应该带 🔒。点"降级"后弹出系统密码框，输入密码后操作成功。结束后执行 `sudo pkill yes`。
 5. **退出：** 在 S3 的内存场景里点"退出"，Python 进程应该结束。
 6. **退出 JankWatch 时恢复：** 暂停一个进程后退出 JankWatch，被暂停的进程应该恢复运行（`stat` 不再是 `T`）。
