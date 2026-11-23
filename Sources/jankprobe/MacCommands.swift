@@ -253,22 +253,62 @@ func cmdProbe(_ args: Args) {
         if sec <= 10, let w = st.workP50Ms { workBase.append(w) }
         let ratio = (st.workP50Ms ?? 0) / (Stats.median(workBase) ?? 1)
         let inp = input.drain()
-        let inMax = inp.map(\.latencyMs).max() ?? 0
-        let s = sys.sample()
-        let line = String(format: "%3d %7d %8.2f %8.2f %8.2f %9.3f %5.2f %7.1f %4.0f%% %4.0f%% %5d %6.1f %7d %@",
-                          sec, st.samples, st.latenessP50Ms, st.latenessP95Ms, st.latenessMaxMs, st.workP50Ms ?? 0, ratio, inMax,
-                          (s?.cpuBusy ?? 0) * 100, (s?.pCoreBusy ?? 0) * 100, s?.memoryPressure.rawValue ?? 0,
-                          (s?.swapInBytesPerSec ?? 0) / 1_048_576, s?.thermal.rawValue ?? 0, s?.cpuSpeedLimit.map { "\($0)" } ?? "-")
-        print(line)
-        csv += [String(sec), String(st.samples), String(st.latenessP50Ms), String(st.latenessP95Ms), String(st.latenessMaxMs),
-                String(st.workP50Ms ?? 0), String(ratio), String(inMax), String(inp.count), String(s?.cpuBusy ?? 0), String(s?.pCoreBusy ?? -1),
-                String(s?.memoryPressure.rawValue ?? 0), String((s?.swapInBytesPerSec ?? 0) / 1_048_576), String(s?.thermal.rawValue ?? 0),
-                s?.cpuSpeedLimit.map { "\($0)" } ?? ""].joined(separator: ",") + "\n"
+        let row = ProbeRow(sec: sec, st: st, ratio: ratio, inputMax: inp.map { $0.latencyMs }.max() ?? 0, inputCount: inp.count, sys: sys.sample())
+        print(row.line)
+        csv += row.csv + "\n"
     }
     probe.stop()
     if let path = args.value("--csv") {
         try? csv.write(toFile: (path as NSString).expandingTildeInPath, atomically: true, encoding: .utf8)
         print("wrote \(path)")
+    }
+}
+
+/// One output row of `jankprobe probe` (split out to keep expressions simple for the type checker).
+struct ProbeRow {
+    let sec: Int
+    let st: ProbeWindowStats
+    let ratio: Double
+    let inputMax: Double
+    let inputCount: Int
+    let sys: SystemSample?
+
+    var cpu: Double { (sys?.cpuBusy ?? 0) * 100 }
+    var pcpu: Double { (sys?.pCoreBusy ?? 0) * 100 }
+    var pressure: Int { sys?.memoryPressure.rawValue ?? 0 }
+    var swapMB: Double { (sys?.swapInBytesPerSec ?? 0) / 1_048_576 }
+    var thermal: Int { sys?.thermal.rawValue ?? 0 }
+    var limit: String {
+        guard let l = sys?.cpuSpeedLimit else { return "-" }
+        return String(l)
+    }
+    var work: Double { st.workP50Ms ?? 0 }
+
+    var line: String {
+        let a = String(format: "%3d %7d %8.2f %8.2f %8.2f", sec, st.samples, st.latenessP50Ms, st.latenessP95Ms, st.latenessMaxMs)
+        let b = String(format: " %9.3f %5.2f %7.1f", work, ratio, inputMax)
+        let c = String(format: " %4.0f%% %4.0f%% %5d %6.1f %7d ", cpu, pcpu, pressure, swapMB, thermal)
+        return a + b + c + limit
+    }
+
+    var csv: String {
+        var f: [String] = []
+        f.append(String(sec))
+        f.append(String(st.samples))
+        f.append(String(st.latenessP50Ms))
+        f.append(String(st.latenessP95Ms))
+        f.append(String(st.latenessMaxMs))
+        f.append(String(work))
+        f.append(String(ratio))
+        f.append(String(inputMax))
+        f.append(String(inputCount))
+        f.append(String(sys?.cpuBusy ?? 0))
+        f.append(String(sys?.pCoreBusy ?? -1))
+        f.append(String(pressure))
+        f.append(String(swapMB))
+        f.append(String(thermal))
+        f.append(limit == "-" ? "" : limit)
+        return f.joined(separator: ",")
     }
 }
 
