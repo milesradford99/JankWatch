@@ -13,6 +13,17 @@
 - **隐私**：`~/Library/Application Support/JankWatch/` 下的数据含有进程名和 App 路径，但不含按键内容。上传或分享前先自己看一遍。
 - **有风险的操作**：`scripts/stress/spotlight.sh` 会重建 Spotlight 索引，耗时较长，需要征得机主同意再跑。
 
+## CI 已经确认的内容
+
+GitHub Actions 的 `macos-15` runner 是一台 Apple M1 虚拟机（3 核，macOS 15.8），每次提交 CI 都会做以下这些事，真机上不需要重复确认：
+
+- arm64 和 x86_64 两个包都能编译、打包、签名（ad-hoc）。
+- `jankprobe env`、`rusage`、`topology`、`probe`、`evaluate` 都能运行。
+- **V2 的部分答案：** 普通用户读不了任何 root 进程或其他用户进程的 rusage（0/139、0/70），`ps` 兜底覆盖了几乎全部（208/209）。Apple Silicon 上 rusage 的单位是 `machTicks`，自动校准结果正确。
+- **端到端链路：** 用配置强制保持"活跃"，同时跑 `cpu.sh` 压力。引擎产生了卡顿，归因先是「Spotlight 索引」（虚拟机刚启动时确实在建索引，root 进程，通过 ps 兜底读到，按钮正确标成需要管理员权限）。压力开始后，元凶几秒内切换为「yes」；压力结束后又切回 Spotlight。停止引擎时，卡顿记录写入了 `episodes/`。
+
+CI 确认**不了**的内容：真实输入延迟（CI 上没人打字）、弹窗 UI、权限弹框、管理员密码框、真机上探针的灵敏度，以及开销。CI 虚拟机上的开销约为单核的 1.3%，而且虚拟机的定时器本身就不准，平静时探针 p95 约 75ms。这些都要靠下面的步骤在真机上验证。
+
 ## 0. 准备
 
 ### 0.1 工具链
